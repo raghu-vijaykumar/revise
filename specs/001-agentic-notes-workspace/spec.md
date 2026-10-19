@@ -62,6 +62,9 @@ while disconnected; confirm content and active state stay isolated.
     switch to Biology, **Then** saving and the AI request continue under Physics
     in the background, Biology stays responsive, and Physics shows progress or
     a recoverable error when I return. No AI change is accepted automatically.
+13. **Given** the Windows desktop app is open, **When** I use File, Edit, View,
+    Workspace, Window, or Help, **Then** those actions live in the existing
+    system menu row and the content area has no duplicate menu or title row.
 
 ### User Story 2 - Ask an agent and review its changes (Priority: P1)
 

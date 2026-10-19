@@ -13,27 +13,37 @@ type DesktopFixtures = {
   desktopApp: ElectronApplication;
   desktopPage: Page;
   contentRoot: string;
+  testRoot: string;
 };
 
 const require = createRequire(import.meta.url);
 const desktopPackage = resolve(import.meta.dirname, '../..');
 
 export const test = base.extend<DesktopFixtures>({
-  contentRoot: async ({}, use) => {
+  testRoot: async ({}, use) => {
     const root = mkdtempSync(join(tmpdir(), 'revise-e2e-'));
-    mkdirSync(join(root, 'Physics'));
-    mkdirSync(join(root, 'Biology'));
     try {
       await use(root);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
   },
-  desktopApp: async ({ contentRoot }, use) => {
+  contentRoot: async ({ testRoot }, use) => {
+    const content = join(testRoot, 'content');
+    mkdirSync(content);
+    await use(content);
+  },
+  desktopApp: async ({ contentRoot, testRoot }, use) => {
+    const userData = join(testRoot, 'user-data');
+    mkdirSync(userData);
     const app = await electron.launch({
       executablePath: require('electron') as string,
       args: [desktopPackage],
-      env: { ...process.env, REVISE_TEST_CONTENT_ROOT: contentRoot },
+      env: {
+        ...process.env,
+        REVISE_TEST_CONTENT_ROOT: contentRoot,
+        REVISE_TEST_USER_DATA: userData,
+      },
     });
     try {
       await use(app);

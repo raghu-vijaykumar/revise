@@ -10,6 +10,8 @@ export type SourceBlock = {
   sourceStart: number;
   sourceEnd: number;
   raw: string;
+  plainText: string;
+  opaque: boolean;
 };
 
 export type ParsedMarkdown = {
@@ -38,6 +40,22 @@ export function requireSourcePosition(
 
 export function parseMarkdown(source: string): ParsedMarkdown {
   const tree = parser.parse(source);
+  function visibleText(node: unknown): string {
+    if (!node || typeof node !== 'object') return '';
+    const value = node as { value?: unknown; children?: unknown };
+    if (typeof value.value === 'string') return value.value;
+    if (Array.isArray(value.children)) {
+      return value.children.map(visibleText).join('');
+    }
+    return '';
+  }
+  function containsHtml(node: unknown): boolean {
+    if (!node || typeof node !== 'object') return false;
+    const value = node as { type?: string; children?: unknown };
+    return (
+      value.type === 'html' || (Array.isArray(value.children) && value.children.some(containsHtml))
+    );
+  }
   const blocks = tree.children.map((node) => {
     const position = requireSourcePosition(node.position);
     const sourceStart = sourceOffset(source, position.start);
@@ -47,6 +65,8 @@ export function parseMarkdown(source: string): ParsedMarkdown {
       sourceStart,
       sourceEnd,
       raw: source.slice(sourceStart, sourceEnd),
+      plainText: visibleText(node),
+      opaque: containsHtml(node) || /(^|\n)\s*:::[^\n]*/.test(source.slice(sourceStart, sourceEnd)),
     };
   });
   return { source, blocks };

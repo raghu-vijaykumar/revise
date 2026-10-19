@@ -33,6 +33,8 @@ export const documentOperationSchema = z
     targetBlockId: z.uuid().optional(),
     expectedSourceHash: sha256Schema.optional(),
     afterBlockId: z.uuid().optional(),
+    secondaryBlockId: z.uuid().optional(),
+    expectedSecondaryHash: sha256Schema.optional(),
     replacementMarkdown: z.string().optional(),
     reason: z.string().min(1),
     citationIds: z.array(z.uuid()),
@@ -49,6 +51,12 @@ export const documentOperationSchema = z
       !operation.replacementMarkdown
     ) {
       context.addIssue({ code: 'custom', message: 'This edit requires replacement Markdown' });
+    }
+    if (
+      operation.kind === 'merge' &&
+      (!operation.secondaryBlockId || !operation.expectedSecondaryHash)
+    ) {
+      context.addIssue({ code: 'custom', message: 'Merge requires a second verified block' });
     }
   });
 

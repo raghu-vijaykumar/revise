@@ -6,3 +6,6 @@ export * from './contracts/source';
 export * from './contracts/ipc';
 export * from './documents/parseMarkdown';
 export * from './documents/text';
+export * from './documents/changeEngine';
+export * from './documents/renderMarkdown';
+export * from './documents/videoLinks';

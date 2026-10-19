@@ -1,4 +1,6 @@
+import { createHash } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
+import { MarkdownFileCoordinator } from './markdownFiles';
 
 export type HistoryOutboxItem = {
   id: string;
@@ -81,4 +83,52 @@ export function recordReviewDecision(
   if (row.decision === decision) return;
   if (row.decision !== 'pending') throw new Error('Review operation already decided');
   db.prepare('UPDATE change_operations SET decision = ? WHERE id = ?').run(decision, operationId);
+}
+
+export async function repairHistoryOutbox(
+  db: DatabaseSync,
+  workspaceRoot: string,
+): Promise<{ queued: number; missingSectionIds: string[] }> {
+  const files = new MarkdownFileCoordinator(workspaceRoot);
+  const sections = db
+    .prepare('SELECT id, relative_markdown_path, file_hash FROM sections WHERE deleted_at IS NULL')
+    .all() as Array<{ id: string; relative_markdown_path: string; file_hash: string }>;
+  const missingSectionIds: string[] = [];
+  let queued = 0;
+  for (const section of sections) {
+    const current = await files.read(section.relative_markdown_path);
+    if (!current) {
+      missingSectionIds.push(section.id);
+      continue;
+    }
+    const existing = db
+      .prepare('SELECT id FROM history_outbox WHERE section_id = ? AND file_hash = ? LIMIT 1')
+      .get(section.id, current.hash);
+    if (current.hash === section.file_hash && existing) continue;
+    // The Markdown file is canonical. A crash may have occurred after its atomic
+    // rename and before the metadata/outbox transaction; replay that boundary.
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      if (current.hash !== section.file_hash) {
+        db.prepare('UPDATE sections SET file_hash = ? WHERE id = ?').run(current.hash, section.id);
+      }
+      if (!existing) {
+        const id = createHash('sha256')
+          .update(`recovery\0${section.id}\0${current.hash}`)
+          .digest('hex');
+        enqueueHistoryCommit(db, {
+          id,
+          sectionId: section.id,
+          fileHash: current.hash,
+          baseCommit: null,
+        });
+        queued += 1;
+      }
+      db.exec('COMMIT');
+    } catch (error) {
+      db.exec('ROLLBACK');
+      throw error;
+    }
+  }
+  return { queued, missingSectionIds };
 }

@@ -16,6 +16,8 @@ type Operation = {
   targetBlockId?: string;
   expectedSourceHash?: string;
   afterBlockId?: string;
+  secondaryBlockId?: string;    // Required for merge
+  expectedSecondaryHash?: string;
   replacementMarkdown?: string; // Parsed and sanitized before projection
   reason: string;
   citationIds: string[];

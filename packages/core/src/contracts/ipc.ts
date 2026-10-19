@@ -7,17 +7,46 @@ const sectionTargetSchema = z.object({
   workspaceId: workspaceIdSchema,
   sectionId: sectionIdSchema,
 });
+const sectionTitleSchema = z.string().trim().min(1).max(200);
 
 export const commandSchemas = {
+  'collection.list': z.object({}),
   'collection.chooseFolder': z.object({}),
+  'collection.relocate': z.object({ collectionId: collectionIdSchema }),
   'workspace.list': z.object({ collectionId: collectionIdSchema }),
   'workspace.create': z.object({
     collectionId: collectionIdSchema,
     displayName: workspaceNameSchema,
   }),
+  'workspace.rename': z.object({
+    workspaceId: workspaceIdSchema,
+    displayName: workspaceNameSchema,
+  }),
   'workspace.switch': z.object({ workspaceId: workspaceIdSchema }),
+  'chat.readDraft': z.object({ workspaceId: workspaceIdSchema }),
+  'chat.saveDraft': z.object({ workspaceId: workspaceIdSchema, draft: z.string().max(10000) }),
+  'section.list': z.object({ workspaceId: workspaceIdSchema }),
+  'section.create': z.object({
+    workspaceId: workspaceIdSchema,
+    title: sectionTitleSchema,
+    parentId: sectionIdSchema.nullable().default(null),
+  }),
+  'section.rename': sectionTargetSchema.extend({ title: sectionTitleSchema }),
+  'section.move': sectionTargetSchema.extend({ parentId: sectionIdSchema.nullable() }),
+  'section.reorder': z.object({
+    workspaceId: workspaceIdSchema,
+    parentId: sectionIdSchema.nullable(),
+    orderedIds: z.array(sectionIdSchema),
+  }),
+  'section.delete': sectionTargetSchema,
+  'section.restore': sectionTargetSchema,
   'section.open': sectionTargetSchema,
+  'section.insertYoutube': sectionTargetSchema.extend({ url: z.url() }),
+  'section.insertLocalVideo': sectionTargetSchema,
+  'section.openLocalVideo': sectionTargetSchema.extend({ relativeLink: z.string().min(1) }),
+  'media.openYoutube': z.object({ url: z.url() }),
   'section.saveRich': sectionTargetSchema.extend({
+    sessionId: z.uuid(),
     baseFileHash: sha256Schema,
     transaction: z.unknown(),
   }),

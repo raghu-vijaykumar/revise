@@ -15,6 +15,9 @@ Activity | Workspace switcher + section explorer + Timeline | AI chat | Global e
                                                         rich sections and work views
 ```
 
+- On Windows, the app uses the system's existing menu row for File, Edit,
+  View, Workspace, Window, and Help actions. No second menu or title row sits
+  above the section explorer, chat, and global editor tabs.
 - On first use, choose a parent content folder. Each named workspace is one
   immediate subfolder, for example `Physics/` and `Biology/`. The active
   workspace appears in a switcher above the section tree. Switching restores
