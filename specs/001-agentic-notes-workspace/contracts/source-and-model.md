@@ -64,6 +64,9 @@ The gateway rejects a request whose notes or sources do not belong to the
 manifest workspace. Cross-workspace content requires an explicit user-selected
 copy/import action before it can be included. The gateway rejects a cloud
 request without a valid, visible approval scope.
+An inline YouTube URL or local video link contributes only its link text/URL
+to MVP document context. Playback is not extraction: video bytes, captions,
+transcripts, and frames are not silently read or sent to any model.
 The UI shows provider, note/source count, attachment inclusion, and whether data
 leaves the device. A recurring provider/workspace permission may be offered, but
 its scope is inspectable and revocable. No model receives a raw filesystem path,

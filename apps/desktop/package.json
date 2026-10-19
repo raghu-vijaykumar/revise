@@ -1,0 +1,21 @@
+{
+  "name": "@revise/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/main/index.cjs",
+  "scripts": {
+    "build": "vite build --config vite.config.ts && esbuild src/main/index.ts --bundle --platform=node --format=cjs --loader:.sql=text --external:electron --outfile=dist/main/index.cjs && esbuild src/preload/index.ts --bundle --platform=node --format=cjs --external:electron --outfile=dist/preload/index.cjs",
+    "start": "pnpm build && electron .",
+    "package:win": "pnpm build && electron-builder --win nsis --config electron-builder.yml"
+  },
+  "dependencies": {
+    "@revise/core": "workspace:*",
+    "@tiptap/core": "3.32.0",
+    "@tiptap/markdown": "3.32.0",
+    "@tiptap/react": "3.32.0",
+    "@tiptap/starter-kit": "3.32.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  }
+}

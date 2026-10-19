@@ -1,0 +1,13 @@
+node_modules/
+dist/
+build/
+coverage/
+playwright-report/
+test-results/
+pnpm-lock.yaml
+specs/001-agentic-notes-workspace/wireframes/*.svg
+specs/
+.specify/
+.agents/
+AGENTS.md
+README.md

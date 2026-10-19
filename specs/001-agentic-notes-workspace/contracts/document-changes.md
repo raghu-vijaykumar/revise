@@ -44,8 +44,12 @@ type ReviewDecision = {
 `split`/`merge` require all affected IDs and hashes. The parser resolves IDs
 to verified source spans; raw character offsets from a model are never trusted.
 The writer preserves untouched Markdown bytes. The validator rejects duplicate
-IDs, unsupported destructive rewrites, missing citations, and cross-workspace
-targets. Unknown custom syntax is preserved as an opaque node or untouched
+IDs, unsupported destructive rewrites, false citation references, and
+cross-workspace targets. Factual additions with no verified source remain
+valid only when marked `Unsourced` in proposal and approved projections. On
+acceptance, an unsupported factual block also receives a standard Markdown
+`**Unsourced**:` label so external readers and the basic export retain it.
+Unknown custom syntax is preserved as an opaque node or untouched
 source span. Rich proposal edits create a new user-authored operation version
 and rerun validation; they do not write the approved section until acceptance.
 
@@ -54,17 +58,23 @@ and rerun validation; they do not write the approved section until acceptance.
 The main process derives the workspace root from a trusted workspace registry,
 never from a renderer-supplied path. Every section, agent, review, source,
 history, and search command carries a workspace ID and is checked against the
-object's owner. Inactive-workspace runs may finish but cannot update the active
-view or write into its root. Existing pending state is restored on return.
+object's owner. On a switch, a dirty draft is durably checkpointed first;
+the origin workspace's save, Git commit, and AI run may finish in the
+background. Their events update origin state and an activity badge, never the
+newly active view. Existing pending state is restored on return.
 
 | Command | Input | Output |
 | --- | --- | --- |
 | `collection.chooseFolder` | native user-selected parent folder | validated parent path or recoverable error |
 | `workspace.create` | display name, active collection ID | stable ID and new immediate subfolder; collision or path error |
-| `workspace.list/switch` | collection ID, target workspace ID | active workspace snapshot and restored tabs/chat; unavailable folder error |
+| `workspace.list` | collection ID | known workspaces and per-workspace activity state |
 | `workspace.rename` | workspace ID, new name | new display name and safely renamed subfolder or collision error |
+| `workspace.switch` | target workspace ID, origin draft checkpoint IDs | target snapshot; origin save/run activity continues or switch reports checkpoint failure |
 | `section.open` | section ID | file hash, rich document projection, and media references; backing path stays internal |
 | `section.saveRich` | section ID, base file hash, validated rich transaction | new file hash, pending/complete Git commit, or conflict |
+| `section.insertYoutube` | section ID, supported user-provided HTTPS URL, insertion anchor | ordinary Markdown link and derived isolated inline player or URL fallback |
+| `section.insertLocalVideo` | section ID, user-selected file, insertion anchor | verified section-adjacent copy and relative Markdown link; no broken link on copy failure |
+| `workspace.exportBasic` | workspace ID, user-selected destination folder | readable Markdown/media tree, manifest, and missing-media report |
 | `agent.start` | prompt, destination section, provider, context manifest, optional selection anchor | run ID |
 | `agent.cancel` | run ID | cancellation status |
 | `annotation.create` | selection anchor, prompt, optional comment thread | anchored request or stale-anchor conflict |
@@ -77,8 +87,15 @@ view or write into its root. Existing pending state is restored on return.
 | `history.restore` | target commit, current file hash | new file save and restoration commit |
 
 Subscriptions: `agent.progress`, `proposal.updated`, `note.revisionChanged`,
-`import.progress`, `file.externalChange`, and `history.status`. Every event carries workspace ID and a
+`workspace.activity`, `import.progress`, `file.externalChange`, and
+`history.status`. Every event carries workspace ID and a
 monotonic sequence to discard stale UI events.
+
+The rich renderer accepts only recognized YouTube video URLs for the online
+player; arbitrary remote HTML or iframe markup never gains document or IPC
+authority. Store the original URL link. A local video lives under the owning
+section's sibling `.assets/<section-id>/` directory and moves with that
+section. Background activity cannot approve a proposal.
 
 ## Diff presentation contract
 
@@ -86,6 +103,8 @@ monotonic sequence to discard stale UI events.
   before/after rendering, and source badges.
 - The preview cannot look identical to approved content: it carries a persistent
   `Proposed` banner and operation highlights, including move origin/destination.
+- Factual text without a verified source shows `Unsourced` during review and
+  after acceptance until a source is linked or the claim is removed.
 - Review opens a `Changes: <section>` editor tab in the right work pane. The
   selected section, section tree, AI chat, and conversation context remain.
 - Proposed rich text is directly editable: typing, selection, headings,

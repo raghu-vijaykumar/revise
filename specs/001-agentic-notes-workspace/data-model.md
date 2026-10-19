@@ -6,8 +6,11 @@
 chosen-content-folder/
 ├── Physics/                       # One workspace; name shown in switcher
 │   ├── Mechanics/
-│   │   └── Newtons Laws.md         # Canonical content of one visible section
-│   ├── assets/                    # Attachments stay in this workspace
+│   │   ├── Newtons Laws.md         # Canonical content of one visible section
+│   │   └── .assets/
+│   │       └── section-7f3a/
+│   │           └── motion.mp4      # Local video beside its section
+│   ├── assets/                    # Later imported source originals
 │   └── .ai-notes/                 # Private state for Physics only
 │       ├── workspace.json         # Stable ID and display name
 │       ├── index.sqlite           # Index, chat, jobs, decisions
@@ -31,6 +34,13 @@ a section changes its path, while a sidecar ID and Git rename detection
 preserve section identity where unambiguous.
 External editors may modify `.md` files; the app detects their new hashes,
 reparses them, and resolves any pending proposal conflict before writing.
+The section stores a relative link such as
+`[Motion clip](./.assets/section-7f3a/motion.mp4)`. Its stable ID keeps the media
+folder name independent of section renames. Moving the section to another
+hierarchy folder moves its companion media folder and rewrites verified
+relative links in one recoverable operation. A YouTube video instead remains a
+normal `https://www.youtube.com/watch?...` link in Markdown; the rich editor
+derives a player from that supported URL without downloading it.
 
 ## Entities
 
@@ -43,6 +53,8 @@ reparses them, and resolves any pending proposal conflict before writing.
 | GitRevision | workspaceId, commitHash, parentHash, sectionId/path, actor, timestamp, message | Per-section timeline derives from workspace-local path-limited history; restore adds commit |
 | ChatConversation | id, workspaceId, selectedSectionId, messages, pendingRunIds | Switching preserves its origin workspace context; no cross-workspace default context |
 | AgentRun | id, workspaceId, providerId, contextManifest, status, timestamps | No credentials in stored request data; context stays in its workspace |
+| DraftCheckpoint | workspaceId, sectionId, baseFileHash, richTransaction, queuedAt, status | Durable before switching away; background save replays only against its origin section |
+| WorkspaceActivity | workspaceId, pendingSaveIds, pendingRunIds, lastError, updatedAt | Switcher badge reflects origin workspace jobs without applying proposals |
 | ChangeSet | id, workspaceId, runId, sectionId, baseFileHash, status, createdAt | Editable rich proposal stays in its workspace until approval |
 | ChangeOperation | id, changeSetId, kind, targetSidecarId, expectedTextHash, replacementMarkdown, decision, authoredBy | User edits to a proposal create reviewable operations, not direct writes |
 | SelectionAnnotation | id, workspaceId, sectionId, baseFileHash, blockId, selectedQuoteHash, relativeRange, prompt, status | AI scope is anchored; stale anchors cause conflict |
@@ -50,7 +62,9 @@ reparses them, and resolves any pending proposal conflict before writing.
 | Source | id, workspaceId, type, URI/name, contentHash, capturedAt, status | Original artifact and capture identity preserved in its workspace |
 | SourceSegment | id, workspaceId, sourceId, text/observation, page/time/region, extractorVersion, confidence | Locator survives note re-rendering; owning workspace matches source |
 | Citation | id, noteId, blockId, sourceSegmentId, locator, quoteHash | Sidecar links claim to source without polluting note source |
-| Attachment | workspaceId, contentHash, mediaType, byteLength, relativePath, refCount | Files stay inside the owning workspace assets directory |
+| ClaimStatus | workspaceId, sectionId, blockId, status, sourceSegmentId?, textHash | An unsourced AI factual block retains a readable `**Unsourced**:` marker in canonical Markdown until sourced or removed; sidecar keeps review identity |
+| Attachment | workspaceId, sectionId, contentHash, mediaType, byteLength, relativePath, refCount | MVP local video is copied to the section-adjacent `.assets/<section-id>/` folder before its relative link is saved |
+| VideoEmbed | workspaceId, sectionId, kind, originalUrlOrAttachmentId, playbackStatus | YouTube links remain external URLs; local media remains a relative link; player state is derived, not Markdown source |
 | ImportJob | id, workspaceId, sourceId, stage, progress, error, checkpoint | Durable cancellation/retry in origin workspace |
 | Preference | id, workspaceId, scope, key, value, origin, status | Inferred preferences require approval; workspace defaults remain separate |
 | KnowledgeLink | workspaceId, fromNoteId, toNoteId, relation, origin | Rebuildable backlinks within a workspace |
@@ -68,6 +82,10 @@ reparses them, and resolves any pending proposal conflict before writing.
 - A local video is linked as a normal Markdown attachment link and displayed
   as an inline player in its section. An external Markdown reader keeps a
   usable link even when it cannot embed playback.
+- A validated YouTube watch or short URL is stored as a normal HTTPS Markdown
+  link. The rich view recognizes it and renders a sandboxed player only online;
+  blocked, private, or offline video retains the original link. Video content
+  is not downloaded or analyzed for MVP.
 - Unknown Markdown or future custom directives remain in the `.md` file and
   appear as a protected opaque node or safe fallback, never discarded on save.
 - Custom rich rules later declare syntax version, parser, serializer, preview,
@@ -85,12 +103,15 @@ ImportJob: queued -> extracting -> needs_review -> ready | failed | cancelled
 HistoryOutbox: pending -> committing -> complete | retryable_failure
 Preference: suggested -> accepted | rejected | disabled
 Workspace: created -> active -> inactive | unavailable
+DraftCheckpoint: queued -> saving -> saved | conflict | retryable_failure
 ```
 
 ## Save and recovery sequence
 
-1. Resolve the active workspace ID and confined root before any section read or
-   write; discard late events from a previously active workspace.
+1. Resolve the workspace ID and confined root before any section read or write.
+   On switch, durably checkpoint a dirty rich draft first. Keep saves, Git
+   outbox work, and started AI runs under their origin workspace. Persist late
+   events there and show only an activity badge in the newly active workspace.
 2. Validate the current section's `.md` hash and target source spans. An external edit
    invalidates stale edits; rebase only when exact, non-overlapping matches hold.
 3. Write replacement Markdown to a temp file within the same directory, flush,
@@ -103,11 +124,19 @@ Workspace: created -> active -> inactive | unavailable
    duplicating an operation. Never claim a durable timeline entry prematurely.
 6. Restore reads a selected Git file version, previews a rich diff, then
    writes it as a new file version and new Git commit. Prior commits remain.
+7. Insert local video by staging and verifying the copy in the adjacent media
+   folder, then writing its relative link. On copy failure, preserve the draft
+   and do not commit a broken link. Export validates linked media presence.
+8. On approval, write a standard Markdown `**Unsourced**:` label before an
+   unsupported factual AI block and retain its claim status in the sidecar.
+   External edits cannot silently turn that block into a sourced claim.
 
 ## Retention and portability
 
-Each workspace can be opened or exported separately. Its notes and assets
-remain readable if `.ai-notes` is removed. In that
+Each workspace can be opened or exported separately. MVP export copies all
+canonical Markdown and linked local media with a manifest and reports missing
+media. A standard reader can follow the relative links and see `Unsourced`
+labels without this app. Its notes and assets remain readable if `.ai-notes` is removed. In that
 case, indexes and sidecar IDs can be rebuilt, but approval metadata and Git
-history require backup. Export bundles Markdown, assets, source metadata,
-preferences, and optional history. Reimport verifies hashes and path safety.
+history require backup. The later extended export bundles source metadata,
+preferences, and optional history; reimport verifies hashes and path safety.

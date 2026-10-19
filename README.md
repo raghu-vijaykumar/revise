@@ -8,18 +8,22 @@ chat, and a right editor group with global tabs for rich sections and work
 views such as changes, imports, browsing, revision previews, and settings.
 Markdown filenames and syntax stay out of the normal editing interface.
 
-## Current delivery: wireframes and plan
+## Wireframes, plan, and implementation
 
-- [Review the ten wireframes](specs/001-agentic-notes-workspace/wireframes/README.md)
+- [Review the eleven wireframes](specs/001-agentic-notes-workspace/wireframes/README.md)
 - [Product specification](specs/001-agentic-notes-workspace/spec.md)
 - [Technical and phased plan](specs/001-agentic-notes-workspace/plan.md)
 - [Data model](specs/001-agentic-notes-workspace/data-model.md)
 - [Dependency-ordered implementation tasks](specs/001-agentic-notes-workspace/tasks.md)
 
-Application implementation begins after wireframe review is recorded in Phase
-0 of the task list. The current repository contains planning and design
-artifacts, not application source code.
+Application implementation was authorized on 2026-10-19 after the user directed
+the wireframe revisions. Phase 0 of the task list records that review gate.
 
-The planned first code scaffold includes strict lint/type/format gates, V8
-coverage with module floors, and real Electron UI tests with reviewed visual
-baselines. These checks are specified before feature implementation.
+The desktop scaffold builds an Electron app with a persistent section explorer,
+AI chat pane, and global editor tab group. It includes strict lint/type/format
+gates, V8 coverage with module floors, a versioned workspace SQLite schema,
+real Electron UI smoke tests at two Windows desktop sizes, and an NSIS package.
+The feature workflows remain tracked in the Spec Kit task list.
+
+Run `pnpm install`, `pnpm verify`, and `pnpm start` for the scaffold. Build the
+Windows installer with `pnpm package:win`.

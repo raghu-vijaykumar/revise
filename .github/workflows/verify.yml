@@ -1,0 +1,29 @@
+name: Verify
+
+on:
+  push:
+    branches: [main, 001-agentic-notes-workspace]
+  pull_request:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm verify
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-failures
+          path: |
+            test-results/
+            coverage/
+          if-no-files-found: ignore

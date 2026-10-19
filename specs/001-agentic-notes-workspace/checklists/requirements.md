@@ -26,6 +26,10 @@
 - [x] Functional requirements map to scenarios and measurable outcomes
 - [x] Section explorer, persistent chat, global tabs, rich editing, embedded video, editable review, selection annotations, per-section Timeline, source, browser, and offline flows are covered
 - [x] Parent-folder selection, separate workspace subfolders, switching, isolation, and unavailable-folder recovery are covered
+- [x] YouTube URL and adjacent local-video embedding are P1; video analysis remains P2
+- [x] Background save and AI work remain bound to the origin workspace after a switch
+- [x] Basic readable Markdown/media export and visible Unsourced labels are P1
+- [x] Installed Windows package and keyboard-only smoke tests close the P1 exit gate
 - [x] Wireframe review is the next delivery gate before implementation
 - [x] First code scaffold includes static checks, code coverage, real Electron UI automation, visual baselines, and CI gates
 - [x] Coverage floors and representative UI journeys are measurable and mapped to setup and story tasks

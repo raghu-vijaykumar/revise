@@ -50,6 +50,18 @@ while disconnected; confirm content and active state stay isolated.
 9. **Given** the selected content folder is moved or unavailable, **When** I
    reopen the app, **Then** I can locate it again or choose another existing
    collection without the app silently creating a replacement or losing data.
+10. **Given** I insert a YouTube URL into a section, **When** I reopen it,
+    **Then** a playable embed appears within the rich document when online,
+    the backing Markdown contains a normal URL link, and a link remains usable
+    when embedding or network playback is unavailable.
+11. **Given** I choose a local video, **When** I insert it into a section,
+    **Then** the app copies it to a section-adjacent media folder, adds a
+    relative Markdown link, and plays it within the rich document. Moving or
+    exporting the section retains the playable relative link and media file.
+12. **Given** I edit a section or start an AI request in Physics, **When** I
+    switch to Biology, **Then** saving and the AI request continue under Physics
+    in the background, Biology stays responsive, and Physics shows progress or
+    a recoverable error when I return. No AI change is accepted automatically.
 
 ### User Story 2 - Ask an agent and review its changes (Priority: P1)
 
@@ -83,6 +95,10 @@ revision, inspect added/removed/moved blocks, and accept only one operation.
    annotation asking AI to update it, **Then** the selection and section
    revision are attached to the request; the answer returns as a reviewable
    change on that selection and never silently edits other content.
+9. **Given** an AI proposal adds a factual claim without a supporting source,
+   **When** I review it and after I accept it, **Then** the claim is visibly
+   labeled unsourced until a source is attached; the review does not imply a
+   citation that the agent did not provide.
 
 ### User Story 3 - Inspect provenance and recover history (Priority: P1)
 
@@ -202,6 +218,10 @@ and export then reimport a workspace without data loss.
   is read-only, moved, or contains an unrelated same-named directory.
 - A user switches workspaces while an editor has unsaved changes or an AI run
   is in progress; content and events remain attached to their origin workspace.
+- A YouTube video is unavailable offline, private, age-restricted, or disallows
+  embedding; the original URL remains openable and no content is downloaded.
+- A local video is moved with its section, or an attachment copy fails midway;
+  the relative link must never point silently to an incomplete file.
 - Pasted rich content contains unsupported formatting or an unknown Markdown
   extension; the app preserves it safely or reports what cannot be represented.
 
@@ -243,7 +263,7 @@ and export then reimport a workspace without data loss.
 - **FR-012 (P2)**: Extraction jobs MUST expose progress, cancellation, retry,
   failure details, and a reviewable extracted preview.
 - **FR-013 (P2)**: Generated factual additions MUST cite a source locator when
-  supported, or be visibly marked as unsourced.
+  supported. The P1 baseline for visible unsourced claims is FR-032.
 - **FR-014 (P2)**: The app MUST offer an embedded browser with capture off by
   default in its own right editor tab, with explicit controls for saving pages,
   selections, and annotations while the chat remains visible.
@@ -256,7 +276,8 @@ and export then reimport a workspace without data loss.
 - **FR-018 (P3)**: Users MUST be able to select installed local models for
   supported processing and clearly see remaining online dependencies.
 - **FR-019 (P3)**: Users MUST export notes, attachments, provenance, and history
-  in documented readable forms and reimport their own export.
+  in documented readable forms and reimport their own export. A minimal P1
+  export of Markdown and linked media is required separately by FR-033.
 - **FR-020 (P3)**: Optional multi-device sync MUST preserve offline editing and
   surface conflicting revisions before overwriting either version.
 - **FR-021 (P1)**: Users MUST be able to dictate an agent request with a visible
@@ -282,10 +303,13 @@ and export then reimport a workspace without data loss.
   annotation action to ask AI for a scoped update. The annotation MUST retain
   the selected quote/range, section identity, and base revision, and produce a
   reviewable proposal or a visible conflict if its anchor is stale.
-- **FR-027 (P1)**: A section MUST support an embedded video player within its
-  rich content. The video remains a local attachment referenced by a portable
-  Markdown link in that section's backing file, with playback state kept out
-  of the document and an accessible fallback link when playback is unavailable.
+- **FR-027 (P1)**: A section MUST support inline video in its direct rich editor.
+  A user MAY paste a supported YouTube video URL; the app stores a normal URL
+  link in Markdown and renders an isolated embedded player while online. A
+  user MAY choose a local MP4 or WebM video; the app MUST copy it to a media folder beside
+  the section's `.md` file and store a relative Markdown link. Both retain an
+  accessible link fallback if playback or embedding fails. Playback state is
+  outside the document. MVP embedding MUST NOT download or analyze video.
 - **FR-028 (P1)**: On first use, users MUST select a parent content folder.
   They MUST be able to create, name, open, rename, and switch multiple
   workspaces within it. Each workspace MUST occupy a distinct immediate
@@ -302,6 +326,23 @@ and export then reimport a workspace without data loss.
   An unavailable, read-only, or relocated folder MUST produce a recoverable
   prompt instead of silent recreation, overwrite, or data loss. Changing the
   parent folder MUST be an explicit open/relocate flow with no implicit move.
+- **FR-031 (P1)**: A workspace switch MUST leave the origin workspace's
+  document saves, history commits, and already-started AI jobs running in the
+  background. Before leaving an edited section, the app MUST durably capture
+  its pending draft or report that it cannot safely switch. Progress,
+  completion, and errors MUST remain attached to the origin workspace and be
+  visible when it is reopened. Background AI results remain proposed until the
+  user reviews them.
+- **FR-032 (P1)**: Factual content added by AI without a verified source
+  locator MUST be visibly marked `Unsourced` in both the pending rich diff and
+  the approved section and its readable Markdown. A citation badge MUST only
+  appear when a real source card and locator are attached. The label remains
+  until a source is supplied or the claim is removed.
+- **FR-033 (P1)**: Users MUST be able to export one workspace as readable
+  Markdown files with its linked local media and a documented folder layout.
+  The export MUST preserve relative links, include an export manifest, and
+  report missing media rather than silently omitting it. Extended provenance,
+  history, and reimport support remain in FR-019.
 
 ### Engineering Quality Requirements
 
@@ -328,7 +369,9 @@ later polish phase.
 - **QR-004 (P1)**: Desktop UI automation MUST launch the real app against an
   isolated disposable parent folder with at least two workspaces and cover
   folder selection, workspace creation/switching, isolation, section navigation, global tabs,
-  rich formatting and paste, inline video, text selection and annotation,
+  rich formatting and paste, local and YouTube inline video with fallback,
+  background save/AI activity across workspace switches, basic export with
+  linked media, unsourced claim labeling, text selection and annotation,
   editable diff and per-change controls, Timeline, offline behavior, and the
   main empty/error states. Tests MUST confirm AI chat remains visible beside
   the section explorer and editor at both target viewports. They MUST assert
@@ -343,6 +386,11 @@ later polish phase.
   coverage, and UI gates in automation on the Windows reference environment.
   Failed gates block a release claim; the CI run retains coverage reports,
   screenshots, traces, and concise failure logs for review.
+- **QR-007 (P1)**: The MVP exit gate MUST build and install a packaged Windows
+  app on a clean test environment and run a startup, folder selection, local
+  video, save/reopen, and uninstall smoke test. A keyboard-only smoke MUST
+  traverse workspace switching, section navigation, editor formatting, AI
+  request/review controls, Timeline, and export with visible focus and no trap.
 
 ### Key Entities
 
@@ -356,6 +404,12 @@ later polish phase.
   text or feedback on a pending proposed change.
 - **Source / Segment**: original material and extract with a precise locator.
 - **Citation**: link from a claim or block to a source segment.
+- **Claim status**: sourced or `Unsourced` state attached to a factual AI
+  addition and reflected in the readable Markdown after approval.
+- **Draft checkpoint / Workspace activity**: durable pending rich edit and
+  origin-labeled save/AI status across workspace switches.
+- **Video embed / Attachment**: user-provided YouTube URL or section-adjacent
+  local video with a portable Markdown link and derived player.
 - **Agent run / Change set / Operation**: request, proposed edits, and decisions.
 - **Revision**: durable approved or manual state and its ancestry.
 - **Import job**: progress and outcomes for source extraction.
@@ -381,7 +435,7 @@ later polish phase.
   whether content is draft, proposed, or approved and whether a model call is
   local or cloud-based.
 - **SC-007**: The first implementation milestone's verification command and
-  Windows CI run pass all QR-001–QR-006 gates on a clean checkout; coverage
+  Windows CI run pass all QR-001–QR-007 gates on a clean checkout; coverage
   reports include the planned production paths and meet the stated floors.
 - **SC-008**: Desktop UI tests exercise the complete section-to-annotation-to-
   editable-review-to-history journey and detect an intentionally broken tab
@@ -390,6 +444,13 @@ later polish phase.
   folder yields two distinct subfolders. Switching and restarting preserve each
   workspace's sections, open context, pending proposals, and history; searches
   and AI requests never expose content from the other workspace by default.
+- **SC-010**: In the MVP test, a YouTube URL and local video both reopen as
+  inline players in their section, the local file remains beside that section,
+  and offline/blocked playback retains a usable link. Switching workspaces
+  during a save and an AI run completes both under the origin workspace.
+- **SC-011**: The MVP export opens on another machine as Markdown with working
+  relative local-media links; unsupported AI claims remain visibly unsourced;
+  the packaged Windows and keyboard-only smoke tests pass before release.
 
 ## Assumptions
 
@@ -399,8 +460,9 @@ later polish phase.
   explicit action and never silently moves existing workspace folders.
 - A model provider is optional for editing and search; the user supplies any
   cloud API key. Cloud processing is opt-in and is not described as offline.
-- Video input initially means a user-provided file. A video URL remains a link
-  unless its content is legally and technically available to extract.
+- MVP YouTube support is online playback of user-provided video URLs only;
+  the saved Markdown URL remains usable independently of the app. Video
+  transcription, frame analysis, downloading, and other extraction are P2.
 - Browser capture is explicit per session. Private pages are excluded by default.
 - P1 is the first code milestone after wireframe review; P2 and P3 are planned
   releases, not promises for the first implementation increment.

@@ -1,0 +1,14 @@
+{
+  "workspaceId": "physics-fixture",
+  "sectionId": "motion-fixture",
+  "baseFileHash": "fixture-hash",
+  "operations": [
+    {
+      "id": "add-example",
+      "kind": "insert",
+      "reason": "Add one reviewable example",
+      "replacementMarkdown": "**Unsourced**: A sample claim awaiting a verified source.",
+      "citationIds": []
+    }
+  ]
+}

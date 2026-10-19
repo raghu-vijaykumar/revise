@@ -28,9 +28,11 @@ with source-mapped Markdown import/export. No Markdown source mode appears in
 the app. Track block IDs and source spans in rebuildable sidecar metadata.
 Keep unchanged bytes intact for scoped edits. [CommonMark](https://spec.commonmark.org/)
 and [GFM](https://github.github.com/gfm/) provide the portable baseline.
-A local video attachment is represented by a normal Markdown link; the rich
-editor renders that link as an embedded player. Unsupported future syntax is
-preserved as a protected opaque node or unchanged source span.
+A local video attachment is represented by a relative Markdown link into a
+section-adjacent media folder. A supported YouTube watch/short URL stays a
+normal HTTPS Markdown link; the rich editor projects either link as an inline
+player. Unsupported future syntax is preserved as a protected opaque node or
+unchanged source span.
 
 **Rationale**: The user requires Markdown files as the underlying artifact.
 Source maps permit targeted review while the original remains readable in an
@@ -49,6 +51,12 @@ annotations and review comments must be app-owned metadata; the published
 integration is tied to a collaboration provider and is not the planned
 local-first storage path. Parsing must not reserialize an unchanged file.
 
+**Implementation spike result**: Tiptap 3.32 projects headings, bold text,
+lists, pasted rich content, YouTube links, and section-relative video links in
+the integration test. A separate remark source map retains CRLF and untouched
+unsupported syntax byte-for-byte when another block changes. Tiptap Markdown
+remains the rich projection, not the canonical file serializer.
+
 **Alternative rejected**: Tiptap/ProseMirror JSON as canonical state would
 make Markdown an export rather than the user's file. The rich editor is a
 temporary editing projection; validated Markdown remains authoritative.
@@ -61,7 +69,10 @@ subfolder with its own Markdown tree, assets, SQLite store, pending proposals,
 chat, and internal Git history. Keep only the parent path, stable workspace IDs,
 and last active workspace in the app profile. Scope service instances and
 events to a workspace ID; switching never reuses another workspace's tabs,
-search index, or model context. A missing or read-only parent requires an
+search index, or model context. A dirty document receives a durable draft
+checkpoint before the switch. Its save, history commit, and already-started AI
+run continue in the background under the origin workspace; a status badge
+shows work or failure without applying a proposal. A missing or read-only parent requires an
 explicit locate/open action, and changing the parent does not move data.
 
 **Rationale**: Physics and Biology can be managed, copied, and backed up as
@@ -87,6 +98,20 @@ SQLite [transactions](https://www.sqlite.org/lang_transaction.html),
 **Rationale**: The user's file remains open outside the app and history behaves
 like a per-file timeline. Git and the filesystem cannot share one transaction,
 so a visible pending state and repair process are part of the first release.
+
+**Scaffold binding choice**: Electron 44 ships Node 24, whose built-in
+[`node:sqlite` module](https://nodejs.org/api/sqlite.html) supports FTS5 in the
+Windows test environment. The initial migration uses it, avoiding a separate
+native add-on in the installer. SQLite work must stay behind a workspace-local
+service boundary; long queries move to a worker so synchronous database calls
+do not block the editor. A clean Windows package build is part of the setup
+evidence, and installed-app behavior is rechecked at the P1 exit gate.
+
+**MVP portability decision**: Export one workspace's Markdown tree and all
+linked local media with a manifest and verified relative paths before the P1
+release. Extended source metadata, Git history packaging, and reimport remain
+later work. This satisfies the constitution's readable-export obligation while
+keeping the first export simple.
 
 **Alternatives**: SQLite-only revisions were rejected after review because the
 file timeline and Markdown ownership favor an internal Git ledger. SQLite
@@ -125,7 +150,24 @@ explicit cloud request and cannot be called fully offline.
 
 ## Audio and video
 
-**Decision**: Use [FFmpeg](https://github.com/FFmpeg/FFmpeg/blob/master/doc/ffmpeg.texi)
+**MVP embedding decision**: The rich editor inserts either a validated YouTube
+URL or a local file. Store a normal Markdown link in both cases. Copy a local
+file beside its section under `.assets/<section-id>/` before saving the link;
+move the companion folder with the section and preserve relative links in
+basic export. Do not download, transcribe, or analyze video in the MVP.
+Render YouTube through an isolated embedded player with an ordinary link
+fallback for offline, removed, private, restricted, or embed-disabled content.
+[YouTube's embed guidance](https://support.google.com/youtube/answer/171780?hl=en)
+documents those limitations and its
+[desktop player requirements](https://developers.google.com/youtube/terms/required-minimum-functionality)
+require app identity via HTTP Referer or equivalent integration; verify this
+in the packaged Windows spike instead of assuming a local-file iframe works.
+
+**Rationale**: The user can keep the video alongside their explanation while
+the Markdown remains portable. Online playback requires network access and
+must not be described as local video storage.
+
+**Later analysis decision**: Use [FFmpeg](https://github.com/FFmpeg/FFmpeg/blob/master/doc/ffmpeg.texi)
 for demuxing and [whisper.cpp](https://github.com/ggml-org/whisper.cpp/blob/master/README.md)
 for local timestamped speech segments. Add frame sampling and vision analysis
 only after transcript quality, cost, and provenance are measured.
